@@ -406,7 +406,7 @@
 // ════════════════════════════════════════════
 //  CONFIG — from .env via Vite
 // ════════════════════════════════════════════
-const BASE_URL = import.meta.env.VITE_BASE_URL || "http://localhost:5000/api";
+const BASE_URL = "https://crm-be-pi.vercel.app/api";
 
 // ════════════════════════════════════════════
 //  STATE
@@ -583,6 +583,15 @@ function handleSearch() {
 //  INIT
 // ════════════════════════════════════════════
 loadClients();
+
+// Expose functions to global scope for inline event handlers
+window.addClient = addClient;
+window.handleSearch = handleSearch;
+window.clearForm = clearForm;
+window.openEdit = openEdit;
+window.deleteClient = deleteClient;
+window.updateClient = updateClient;
+window.closeModal = closeModal;
 </script>
 
 </body>
