@@ -401,6 +401,10 @@
       <input id="search" placeholder="بحث بالاسم أو الموبايل..." oninput="handleSearch()">
       <button class="clear-search" id="clearSearch" onclick="clearSearch()">✕</button>
     </div>
+    <div class="btn-row" style="margin-bottom: var(--space-lg);">
+      <button class="btn-ghost" onclick="exportClients()">تصدير البيانات</button>
+      <button class="btn-ghost" onclick="document.getElementById('importOverlay').classList.add('open')">استيراد البيانات</button>
+    </div>
 
     <div class="table-wrap">
       <table>
@@ -437,7 +441,7 @@
     </div>
     <div class="modal-actions">
       <button class="btn-ghost" onclick="closeEditModal()">إلغاء</button>
-      <button class="btn-primary" id="updateBtn" onclick="updateClient()">💾 حفظ التعديلات</button>
+      <button class="btn-primary" id="updateBtn" onclick="updateClient()">حفظ التعديلات</button>
     </div>
   </div>
 </div>
@@ -454,12 +458,34 @@
   </div>
 </div>
 
+<!-- Import Modal -->
+<div class="overlay" id="importOverlay" onclick="closeModal(event)">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width: 450px;">
+    <div class="modal-title">📥 استيراد البيانات</div>
+    <div class="field" style="margin-bottom: var(--space-md);">
+      <label>اختر ملف JSON</label>
+      <input type="file" id="importFile" accept=".json" style="padding: 10px;">
+    </div>
+    <div class="field" style="margin-bottom: var(--space-lg);">
+      <label>وضع الاستيراد</label>
+      <select id="importMode" style="background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px var(--space-md); color: var(--text); font-family: var(--font); font-size: 0.9rem; width: 100%;">
+        <option value="merge">إضافة (دمج مع البيانات الحالية)</option>
+        <option value="replace">استبدال (مسح كل البيانات وحفظ الجديدة)</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="document.getElementById('importOverlay').classList.remove('open')">إلغاء</button>
+      <button class="btn-success" id="importBtn" onclick="doImport()">استيراد</button>
+    </div>
+  </div>
+</div>
+
 <!-- Toast -->
 <div class="toast-wrap" id="toastWrap"></div>
 
 <script type="module">
-// const BASE_URL = "http://localhost:5000/api";
-const BASE_URL = "https://crm-be-pi.vercel.app/api";
+const BASE_URL = "http://localhost:5000/api";
+// const BASE_URL = "https://crm-be-pi.vercel.app/api";
 
 let searchTimer = null;
 let pendingDeleteId = null;
@@ -676,10 +702,64 @@ function handleSearch() {
   searchTimer = setTimeout(() => loadClients(val), 300);
 }
 
+async function exportClients() {
+  try {
+    const res = await fetch(`${BASE_URL}/clients/export`);
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `clients-${new Date().toISOString().split("T")[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast("✅ تم تصدير البيانات");
+  } catch { toast("فشل تصدير البيانات", "err"); }
+}
+
+async function doImport() {
+  const file = $("importFile").files[0];
+  if (!file) { toast("اختر ملف أولاً", "err"); return; }
+
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try {
+      const json = JSON.parse(e.target.result);
+      const data = json.data || json;
+      const mode = $("importMode").value;
+
+      const btn = $("importBtn");
+      btn.disabled = true;
+      btn.innerHTML = '<span class="btn-spinner"></span> جاري الاستيراد...';
+
+      const res = await fetch(`${BASE_URL}/clients/import`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ data, mode })
+      });
+      const result = await res.json();
+
+      if (result.success) {
+        toast(`✅ ${result.message}`);
+        $("importOverlay").classList.remove("open");
+        $("importFile").value = "";
+        loadClients();
+      } else {
+        toast(result.message || "خطأ في الاستيراد", "err");
+      }
+    } catch { toast("ملف غير صالح", "err"); }
+    finally {
+      btn.disabled = false;
+      btn.innerHTML = "📥 استيراد";
+    }
+  };
+  reader.readAsText(file);
+}
+
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
     $("editOverlay").classList.remove("open");
     $("deleteOverlay").classList.remove("open");
+    $("importOverlay").classList.remove("open");
   }
 });
 
@@ -695,6 +775,8 @@ window.confirmDelete = confirmDelete;
 window.updateClient = updateClient;
 window.closeModal = closeModal;
 window.closeEditModal = closeEditModal;
+window.exportClients = exportClients;
+window.doImport = doImport;
 </script>
 </body>
 </html>
