@@ -369,7 +369,7 @@
     <div class="form-grid">
       <div class="field">
         <label>الاسم<span class="required-star">*</span></label>
-        <input id="name" placeholder="محمد أحمد" autocomplete="name" onkeydown="if(event.key==='Enter')addClient()">
+        <input id="name" placeholder="كريم محمود" autocomplete="name" onkeydown="if(event.key==='Enter')addClient()">
       </div>
       <div class="field">
         <label>الموبايل<span class="required-star">*</span></label>
@@ -382,6 +382,10 @@
       <div class="field">
         <label>العنوان</label>
         <input id="address" placeholder="العنوان" onkeydown="if(event.key==='Enter')addClient()">
+      </div>
+      <div class="field">
+        <label>اسم الشركة</label>
+        <input id="company_name" placeholder="اسم الشركة" onkeydown="if(event.key==='Enter')addClient()">
       </div>
       <div class="field">
         <label>ملاحظات</label>
@@ -414,6 +418,7 @@
             <th>الموبايل</th>
             <th>الإيميل</th>
             <th>العنوان</th>
+            <th>الشركة</th>
             <th>ملاحظات</th>
             <th>تاريخ الإضافة</th>
             <th>إجراءات</th>
@@ -437,6 +442,7 @@
       <div class="field"><label>الموبايل<span class="required-star">*</span></label><input id="editPhone" placeholder="الموبايل"></div>
       <div class="field"><label>الإيميل</label><input id="editEmail" type="email" placeholder="الإيميل"></div>
       <div class="field"><label>العنوان</label><input id="editAddress" placeholder="العنوان"></div>
+      <div class="field"><label>اسم الشركة</label><input id="editCompanyName" placeholder="اسم الشركة"></div>
       <div class="field"><label>ملاحظات</label><input id="editNotes" placeholder="ملاحظات"></div>
     </div>
     <div class="modal-actions">
@@ -507,7 +513,7 @@ function formatDate(iso) {
 }
 
 function clearForm() {
-  ["name","phone","email","address","notes"].forEach(id => {
+  ["name","phone","email","address","company_name","notes"].forEach(id => {
     const el = $(id);
     el.value = "";
     el.classList.remove("error");
@@ -542,7 +548,7 @@ function renderTable(clients) {
   $("totalCount").textContent = clients.length;
 
   if (!clients.length) {
-    tbody.innerHTML = `<tr><td colspan="7"><div class="empty"><div class="empty-icon">📭</div>لا يوجد عملاء</div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8"><div class="empty"><div class="empty-icon">📭</div>لا يوجد عملاء</div></td></tr>`;
     return;
   }
 
@@ -552,11 +558,12 @@ function renderTable(clients) {
       <td>${escapeHtml(c.phone)}</td>
       <td class="muted">${c.email ? `<a href="mailto:${escapeHtml(c.email)}">${escapeHtml(c.email)}</a>` : "—"}</td>
       <td title="${escapeHtml(c.address||'')}">${c.address ? escapeHtml(c.address) : "—"}</td>
+      <td title="${escapeHtml(c.company_name||'')}">${c.company_name ? escapeHtml(c.company_name) : "—"}</td>
       <td title="${escapeHtml(c.notes||'')}">${c.notes ? escapeHtml(c.notes) : "—"}</td>
       <td class="muted">${formatDate(c.createdAt)}</td>
       <td>
         <div class="actions">
-          <button class="icon-btn edit" onclick="openEdit('${c._id}','${escapeHtml(c.name)}','${escapeHtml(c.phone)}','${escapeHtml(c.email||'')}','${escapeHtml(c.address||'')}','${escapeHtml(c.notes||'')}')">✏️</button>
+          <button class="icon-btn edit" onclick="openEdit('${c._id}','${escapeHtml(c.name)}','${escapeHtml(c.phone)}','${escapeHtml(c.email||'')}','${escapeHtml(c.address||'')}','${escapeHtml(c.company_name||'')}','${escapeHtml(c.notes||'')}')">✏️</button>
           <button class="icon-btn" onclick="promptDelete('${c._id}')">🗑</button>
         </div>
       </td>
@@ -565,7 +572,7 @@ function renderTable(clients) {
 
 async function loadClients(search = "") {
   try {
-    $("tableBody").innerHTML = `<tr><td colspan="7"><div class="empty"><div class="spinner" style="margin:0 auto;"></div></div></td></tr>`;
+    $("tableBody").innerHTML = `<tr><td colspan="8"><div class="empty"><div class="spinner" style="margin:0 auto;"></div></div></td></tr>`;
     const url = search ? `${BASE_URL}/clients?search=${encodeURIComponent(search)}` : `${BASE_URL}/clients`;
     const res = await fetch(url);
     const json = await res.json();
@@ -575,7 +582,7 @@ async function loadClients(search = "") {
     }
   } catch {
     toast("تعذّر الاتصال بالسيرفر", "err");
-    $("tableBody").innerHTML = `<tr><td colspan="7"><div class="empty"><div class="empty-icon">⚠️</div>تحقق من تشغيل الباك-إند</div></td></tr>`;
+    $("tableBody").innerHTML = `<tr><td colspan="8"><div class="empty"><div class="empty-icon">⚠️</div>تحقق من تشغيل الباك-إند</div></td></tr>`;
   }
 }
 
@@ -584,6 +591,7 @@ async function addClient() {
   const phone = $("phone").value.trim();
   const email = $("email").value.trim();
   const address = $("address").value.trim();
+  const company_name = $("company_name").value.trim();
   const notes = $("notes").value.trim();
 
   $("name").classList.remove("error");
@@ -600,7 +608,7 @@ async function addClient() {
     const res = await fetch(`${BASE_URL}/clients`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, phone, email, address, notes })
+      body: JSON.stringify({ name, phone, email, address, company_name, notes })
     });
     const json = await res.json();
     if (json.success) {
@@ -646,12 +654,13 @@ async function confirmDelete() {
   }
 }
 
-function openEdit(id, name, phone, email, address, notes) {
+function openEdit(id, name, phone, email, address, company_name, notes) {
   $("editId").value = id;
   $("editName").value = name;
   $("editPhone").value = phone;
   $("editEmail").value = email;
   $("editAddress").value = address;
+  $("editCompanyName").value = company_name;
   $("editNotes").value = notes;
   $("editOverlay").classList.add("open");
   setTimeout(() => $("editName").focus(), 100);
@@ -663,6 +672,7 @@ async function updateClient() {
   const phone = $("editPhone").value.trim();
   const email = $("editEmail").value.trim();
   const address = $("editAddress").value.trim();
+  const company_name = $("editCompanyName").value.trim();
   const notes = $("editNotes").value.trim();
 
   $("editName").classList.remove("error");
@@ -679,7 +689,7 @@ async function updateClient() {
     const res = await fetch(`${BASE_URL}/clients/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, phone, email, address, notes })
+      body: JSON.stringify({ name, phone, email, address, company_name, notes })
     });
     const json = await res.json();
     if (json.success) {
